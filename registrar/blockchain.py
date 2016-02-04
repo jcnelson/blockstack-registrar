@@ -33,6 +33,10 @@ from .config import RETRY_INTERVAL, TX_CONFIRMATIONS_NEEDED, PREORDER_REJECTED
 from .config import BITCOIND_SERVER, BITCOIND_PORT
 from .config import BITCOIND_USER, BITCOIND_PASSWD
 from .config import BITCOIND_WALLET_PASSPHRASE, BITCOIND_USE_HTTPS
+from .config import MAXIMUM_NAMES_PER_ADDRESS
+from .config import UTXO_SERVER, UTXO_USER, UTXO_PASSWD
+
+from .network import bs_client
 
 from .utils import satoshis_to_btc
 from .utils import pretty_print as pprint
@@ -55,6 +59,15 @@ def get_bitcoind_client():
     return client
 
 
+def get_utxo_client():
+
+    client =BitcoindClient(server=UTXO_SERVER, port=BITCOIND_PORT,
+                           user=UTXO_USER, passwd=UTXO_PASSWD,
+                           use_https=BITCOIND_USE_HTTPS)
+
+    return client
+
+
 def get_block_height():
     """ Return block height (currently uses bitcoind)
     """
@@ -62,10 +75,10 @@ def get_block_height():
     resp = None
 
     # get a fresh local client (needed after waking up from sleep)
-    bicoind_client = get_bitcoind_client()
+    bitcoind_client = get_bitcoind_client()
 
     try:
-        data = bicoind_client.getinfo()
+        data = bitcoind_client.getinfo()
 
         if 'blocks' in data:
             resp = data['blocks']
@@ -157,10 +170,30 @@ def get_balance_from_unspents(address):
     return btc_amount
 
 
-def get_balance(address):
+def get_balance_from_bitcoind(address):
     """ Check if BTC key being used has enough balance on unspents
     """
 
+    bitcoind_client = get_utxo_client()
+
+    data = bitcoind_client.get_unspents(address)
+
+    satoshi_amount = 0
+
+    for utxo in data:
+
+        if 'value' in utxo:
+            satoshi_amount += utxo['value']
+
+    btc_amount = satoshis_to_btc(satoshi_amount)
+    btc_amount = float(btc_amount)
+
+    return btc_amount
+
+
+def get_balance(address):
+    """ Check if BTC key being used has enough balance on unspents
+    """
     data = get_address_details(address, api_key=BLOCKCYPHER_TOKEN)
 
     if 'final_balance' not in data:
@@ -173,8 +206,17 @@ def get_balance(address):
 
 
 def dontuseAddress(address):
-    """ Check if an address has unconfirmed TX and should not be used
+    """ Check if an address should not be used because of:
+        a) it has unconfirmed TX
+        b) it has more than maximum registered names (blockstore restriction)
     """
+
+    resp = bs_client.get_names_owned_by_address(address)
+    names_owned = resp
+
+    if len(names_owned) > MAXIMUM_NAMES_PER_ADDRESS:
+        log.debug("Address %s owns too many names already." % address)
+        return True
 
     try:
         data = get_address_details(address)
@@ -186,10 +228,11 @@ def dontuseAddress(address):
     except:
         return True
 
-    if int(unconfirmed_n_tx) is 0:
-        return False
-    else:
+    if int(unconfirmed_n_tx) != 0:
         return True
+
+    # if all tests pass, then can use the address
+    return False
 
 
 def underfundedAddress(address):
