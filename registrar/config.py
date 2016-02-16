@@ -23,10 +23,14 @@ This file is part of Registrar.
 """
 import os
 
-BLOCKSTORED_IP = '127.0.0.1'
+BLOCKSTORED_IP = 'server.blockstack.org'
 BLOCKSTORED_PORT = 6264
-DHT_MIRROR_IP = '52.20.98.85'
+
+DHT_MIRROR_IP = 'mirror.blockstack.org'
 DHT_MIRROR_PORT = 6266
+
+REGISTRAR_IP = '127.0.0.1'
+REGISTRAR_PORT = 6268
 
 RESOLVER_URL = 'http://resolver.onename.com'
 RESOLVER_USERS_ENDPOINT = "/v2/users/"
@@ -38,6 +42,8 @@ REGISTRAR_DRIVERS = ['webapp', 'api']
 
 IGNORE_USERNAMES = []
 IGNORE_NAMES_STARTING_WITH = []
+
+SERVER_MODE = False  # if registrar deployed as server vs. imported into lib
 
 try:
     # for registrar's internal queue
@@ -62,6 +68,7 @@ except:
     HD_WALLET_PRIVKEY = None
 
 DEBUG = False  # can change in config_local
+UTXO_PROVIDER = 'blockcypher'
 
 DEFAULT_HOST = '127.0.0.1'
 MEMCACHED_PORT = '11211'
@@ -77,14 +84,14 @@ CHAINED_PAYMENT_AMOUNT = 0.04
 DEFAULT_REFILL_AMOUNT = 0.04
 MAX_LENGTH_CHAINED_PAYMENT = 10
 
-DEFAULT_WALLET_DISPLAY = 10
+DEFAULT_WALLET_DISPLAY = 2
 DEFAULT_WALLET_OFFSET = 0
 
 MINIMUM_LENGTH_NAME = 6
 MAXIMUM_NAMES_PER_ADDRESS = 20
 MAX_DHT_WRITE = (8 * 1024) - 1
 
-RATE_LIMIT = 100   # target tx per block
+RATE_LIMIT = 2   # target tx per block
 SLEEP_INTERVAL = 20  # in seconds
 RETRY_INTERVAL = 10  # if a tx is not picked up by x blocks
 
@@ -97,8 +104,15 @@ DEFAULT_CHILD_ADDRESSES = RATE_LIMIT
 QUEUE_LENGTH_TO_MONITOR = 50
 
 CACHE_FILE = 'child_addresses.json'
-CACHE_DIR = os.path.expanduser('~/.registrar')
-CACHE_FILE_FULLPATH = os.path.join(CACHE_DIR, CACHE_FILE)
+LOCAL_STATE_DB = 'local_state.json'
+
+if SERVER_MODE:
+    LOCAL_DIR = os.path.expanduser('~/.registrar')
+else:
+    LOCAL_DIR = os.path.expanduser('~/.blockstack')
+
+CACHE_FILE_FULLPATH = os.path.join(LOCAL_DIR, CACHE_FILE)
+LOCAL_DB_FULLPATH = os.path.join(LOCAL_DIR, LOCAL_STATE_DB)
 
 # default settings for bitcoind, can override in config_local
 BITCOIND_SERVER = 'btcd.onename.com'
@@ -107,6 +121,12 @@ BITCOIND_USER = 'openname'
 BITCOIND_PASSWD = 'opennamesystem'
 BITCOIND_WALLET_PASSPHRASE = ''
 BITCOIND_USE_HTTPS = True
+
+UTXO_SERVER = BITCOIND_SERVER
+UTXO_USER = BITCOIND_USER
+UTXO_PASSWD = BITCOIND_PASSWD
+
+DHT_IGNORE = []
 
 try:
     from config_local import *
