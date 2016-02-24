@@ -25,7 +25,7 @@ import json
 import requests
 
 from basicrpc import Proxy
-from blockstore_client import client as bs_client
+from blockstore_client.client import BlockstoreRPCClient
 
 from .config import BLOCKSTORED_IP, BLOCKSTORED_PORT
 from .config import DHT_MIRROR_IP, DHT_MIRROR_PORT
@@ -41,13 +41,10 @@ log = config_log(__name__)
 #bs_client = Proxy(BLOCKSTORED_IP, BLOCKSTORED_PORT)
 dht_client = Proxy(DHT_MIRROR_IP, DHT_MIRROR_PORT)
 
-# start session using blockstore_client
-bs_client.session(server_host=BLOCKSTORED_IP, server_port=BLOCKSTORED_PORT)
-
 
 def get_bs_client():
 
-    # return Proxy(BLOCKSTORED_IP, BLOCKSTORED_PORT)
+    #return Proxy(BLOCKSTORED_IP, BLOCKSTORED_PORT)
     return bs_client
 
 
@@ -57,6 +54,12 @@ def get_dht_client():
 
 
 def get_blockchain_record(fqu):
+
+    # hack to ensure local, until we update client
+    from blockstore_client import client as bs_client
+    # start session using blockstore_client
+    bs_client.session(server_host=BLOCKSTORED_IP, server_port=BLOCKSTORED_PORT,
+                      set_global=True)
 
     data = {}
 

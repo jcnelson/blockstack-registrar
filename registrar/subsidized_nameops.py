@@ -29,7 +29,6 @@ from crypto.utils import get_address_from_privkey
 from crypto.utils import get_pubkey_from_privkey
 
 from .utils import get_hash, pretty_print
-from .network import bs_client
 from .network import get_blockchain_record
 
 from .states import ownerName, nameRegistered
@@ -41,6 +40,7 @@ from .db import update_queue, transfer_queue
 from .blockchain import get_tx_confirmations
 from .blockchain import dontuseAddress, underfundedAddress
 from .blockchain import recipientNotReady
+from .blockchain import get_bitcoind_client
 
 from .wallet import wallet
 
@@ -49,6 +49,7 @@ from .utils import pretty_print as pprint
 
 from .config import PREORDER_CONFIRMATIONS
 from .config import BLOCKCYPHER_TOKEN
+from .config import BLOCKSTORED_IP, BLOCKSTORED_PORT
 
 log = config_log(__name__)
 
@@ -60,10 +61,12 @@ def send_subsidized(hex_privkey, unsigned_tx_hex):
     # sign all unsigned inputs
     signed_tx = sign_all_unsigned_inputs(hex_privkey, unsigned_tx_hex)
 
-    resp = pushtx(tx_hex=signed_tx, api_key=BLOCKCYPHER_TOKEN)
+    bitcoind_client = get_bitcoind_client()
+    resp = bitcoind_client.broadcast_transaction(signed_tx)
+    #resp = pushtx(tx_hex=signed_tx, api_key=BLOCKCYPHER_TOKEN)
 
-    if 'tx' in resp:
-        reply['tx_hash'] = resp['tx']['hash']
+    if 'transaction_hash' in resp:
+        reply['tx_hash'] = resp['transaction_hash']
     else:
         reply['error'] = "ERROR: broadcasting tx"
         log.debug(pprint(resp))
@@ -83,6 +86,12 @@ def subsidized_update(fqu, profile, owner_privkey, payment_address,
 
         Returns True/False and stores tx_hash in queue
     """
+
+    # hack to ensure local, until we update client
+    from blockstore_client import client as bs_client
+    # start session using blockstore_client
+    bs_client.session(server_host=BLOCKSTORED_IP, server_port=BLOCKSTORED_PORT,
+                      set_global=True)
 
     if alreadyinQueue(update_queue, fqu):
         log.debug("Already in update queue: %s" % fqu)
@@ -161,6 +170,12 @@ def subsidized_transfer(fqu, transfer_address, owner_privkey, payment_address,
 
         Returns True/False and stores tx_hash in queue
     """
+
+    # hack to ensure local, until we update client
+    from blockstore_client import client as bs_client
+    # start session using blockstore_client
+    bs_client.session(server_host=BLOCKSTORED_IP, server_port=BLOCKSTORED_PORT,
+                      set_global=True)
 
     if alreadyinQueue(transfer_queue, fqu):
         log.debug("Already in transfer queue: %s" % fqu)
